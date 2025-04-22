@@ -1,6 +1,7 @@
 "use server";
 
 import { auth, db } from "@/firebase/admin";
+import { CollectionReference, DocumentData } from "firebase-admin/firestore";
 import { cookies } from "next/headers";
 
 // Session duration (1 week)
@@ -129,4 +130,43 @@ export async function getCurrentUser(): Promise<User | null> {
 export async function isAuthenticated() {
   const user = await getCurrentUser();
   return !!user;
+}
+
+export async function getInterviewsByUserId(userId: string): Promise<Interview[] | null>{
+  try {
+    const snapshot = await db
+      .collection('interviews')
+      .where('userId', '==', userId)
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    return snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as Interview[];
+  } catch (error) {
+    console.error("Error fetching interviews:", error);
+    return null;
+  }
+}
+
+export async function getLatestInterviews(params: GetLatestInterviewsParams): Promise<Interview[] | null>{
+  const { userId, limit = 20 } = params;
+  try {
+    const snapshot = await db
+      .collection('interviews')
+      .where('userId', '==', userId)
+      .where('finalized', '==', true)
+      .orderBy('createdAt', 'desc')
+      .limit(limit)
+      .get();
+      
+    return snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as Interview[];
+  } catch (error) {
+    console.error("Error fetching interviews:", error);
+    return null;
+  }
 }
